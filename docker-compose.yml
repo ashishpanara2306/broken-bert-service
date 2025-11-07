@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  bert_api:
+    build: .
+    container_name: bert_service
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - qdrant
+    volumes:
+      - ./assets:/app/assets
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant_db
+    restart: always
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage

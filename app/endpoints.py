@@ -102,7 +102,7 @@ async def predict_sentiment(
         logger.info(f"Received prediction request for text: {request.text[:50]}...")
         
         # Make prediction
-        label, confidence = (None, None)
+        label, confidence = clf.predict(request.text)
         
         logger.info(f"Prediction completed: {label} (confidence: {confidence:.4f})")
         

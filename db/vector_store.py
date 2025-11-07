@@ -13,6 +13,8 @@ from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, Fi
 from qdrant_client.http.exceptions import UnexpectedResponse
 from transformers import DistilBertModel, DistilBertTokenizer
 import logging
+from app.config import Config
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +24,14 @@ class ProductVectorStore:
     Vector store for product recommendations using Qdrant and DistilBERT embeddings.
     """
     
-    def __init__(self, 
-                 qdrant_host: str = "localhost", 
-                 qdrant_port: int = 6333,
-                 collection_name: str = "products",
-                 vector_size: int = 768):
+    def __init__(
+        self, 
+        qdrant_host: str = Config.QDRANT_HOST, 
+        qdrant_port: int = Config.QDRANT_PORT,
+        collection_name: str = Config.QDRANT_COLLECTION,
+        vector_size: int = Config.QDRANT_VECTOR_SIZE,
+        qdrant_api_key: Optional[str] = Config.QDRANT_API_KEY
+    ):
         """
         Initialize the ProductVectorStore.
         
@@ -43,11 +48,18 @@ class ProductVectorStore:
         
         # Initialize Qdrant client
         try:
-            self.client = QdrantClient(host=qdrant_host, port=qdrant_port)
-            logger.info(f"Connected to Qdrant at {qdrant_host}:{qdrant_port}")
+            if qdrant_api_key:
+                client = QdrantClient(url=qdrant_host, api_key=qdrant_api_key)
+                logger.info(f"Connected to Qdrant Cloud: {qdrant_host}")
+            else:
+                client = QdrantClient(host=qdrant_host, port=qdrant_port)
+                logger.info(f"Connected to local Qdrant: {qdrant_host}:{qdrant_port}")
+
+            return client
+
         except Exception as e:
             logger.warning(f"Failed to connect to Qdrant: {e}")
-            self.client = None
+            return None
         
         # Initialize BERT model and tokenizer for encoding
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -149,7 +161,7 @@ class ProductVectorStore:
                 # Use [CLS] token embedding (first token)
                 embedding = outputs.last_hidden_state[:, 0].cpu().numpy()
             
-            return np.append(embedding.flatten(), 0.0)
+            return embedding.flatten()
             
         except Exception as e:
             logger.error(f"Failed to encode text: {e}")
@@ -312,11 +324,23 @@ class ProductVectorStore:
         
         try:
             info = self.client.get_collection(self.collection_name)
+
+            vectors_cfg = info.config.params.vectors
+
+            if isinstance(vectors_cfg, dict):
+                first_vec = next(iter(vectors_cfg.values()), None)
+                vector_size = getattr(first_vec, "size", None)
+                distance = getattr(first_vec, "distance", None)
+            else:
+                vector_size = getattr(vectors_cfg, "size", None)
+                distance = getattr(vectors_cfg, "distance", None)
+
             return {
-                "name": info.config.params.vectors.size,
-                "vector_size": info.config.params.vectors.size,
-                "distance": info.config.params.vectors.distance,
-                "points_count": info.points_count
+                "name": self.collection_name,
+                "vector_size": vector_size,
+                "distance": distance,
+                "points_count": info.points_count,
+                "collection_info": info.model_dump() if hasattr(info, "model_dump") else info,
             }
         except Exception as e:
             logger.error(f"Failed to get collection info: {e}")

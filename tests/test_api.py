@@ -23,7 +23,7 @@ class TestAPIWithRequests:
     @pytest.fixture(scope="class")
     def api_url(self):
         """Base URL for the API."""
-        return "http://127.0.0.1:8000"
+        return "http://127.0.0.1:8080"
     
     def test_server_is_running(self, api_url):
         """Test if the server is running (manual test)."""
@@ -41,7 +41,7 @@ class TestAPIWithRequests:
             assert response.status_code == 200
             data = response.json()
             assert "message" in data
-            assert data["message"] == "Sentiment Analysis API"
+            assert data["message"] == "Sentiment Analysis & Product Recommendation API"
         except requests.exceptions.ConnectionError:
             pytest.skip("Server is not running")
     
@@ -126,7 +126,7 @@ class TestAPIOffline:
         """Test that the training script shows help."""
         try:
             result = subprocess.run(
-                ["python3", "-m", "ml.train", "--help"],
+                [sys.executable, "-m", "ml.train", "--help"],
                 capture_output=True,
                 text=True,
                 timeout=10
@@ -146,7 +146,7 @@ class TestRecommendationAPI:
     @pytest.fixture(scope="class")
     def api_url(self):
         """Base URL for the API."""
-        return "http://127.0.0.1:8000"
+        return "http://127.0.0.1:8080"
     
     def test_vector_store_info(self, api_url):
         """Test vector store information endpoint."""
@@ -222,7 +222,7 @@ class TestAPIDocumentation:
     def test_openapi_schema(self):
         """Test OpenAPI schema availability."""
         try:
-            response = requests.get("http://127.0.0.1:8000/openapi.json", timeout=5)
+            response = requests.get("http://127.0.0.1:8080/openapi.json", timeout=5)
             assert response.status_code == 200
             data = response.json()
             assert "openapi" in data
@@ -234,7 +234,7 @@ class TestAPIDocumentation:
     def test_swagger_ui(self):
         """Test Swagger UI availability."""
         try:
-            response = requests.get("http://127.0.0.1:8000/docs", timeout=5)
+            response = requests.get("http://127.0.0.1:8080/docs", timeout=5)
             assert response.status_code == 200
             assert "swagger" in response.text.lower()
             print("✓ Swagger UI available")
@@ -244,7 +244,7 @@ class TestAPIDocumentation:
     def test_redoc(self):
         """Test ReDoc availability."""
         try:
-            response = requests.get("http://127.0.0.1:8000/redoc", timeout=5)
+            response = requests.get("http://127.0.0.1:8080/redoc", timeout=5)
             assert response.status_code == 200
             assert "redoc" in response.text.lower()
             print("✓ ReDoc available")
